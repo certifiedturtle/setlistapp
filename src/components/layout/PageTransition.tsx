@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { useNavDirection } from '@/hooks/useNavDirection'
 import { NavDirection } from '@/types'
 
-const variants: Record<NavDirection, { initial: object; animate: object; exit: object }> = {
+const variants = {
   forward: {
     initial: { x: '100%', opacity: 0 },
     animate: { x: 0, opacity: 1 },
