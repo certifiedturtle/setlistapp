@@ -12,9 +12,11 @@ import {
   useSensors,
 } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { ChevronLeft, Plus, Share2 } from 'lucide-react'
+import { ChevronLeft, Monitor, Plus, Share2 } from 'lucide-react'
+import { AnimatePresence } from 'framer-motion'
 import { PageTransition } from '@/components/layout/PageTransition'
 import { DraggableSongRow } from '@/components/setlist/DraggableSongRow'
+import { StageViewOverlay } from '@/components/setlist/StageViewOverlay'
 import { useSetlistStore } from '@/store/setlistStore'
 import { useSongStore } from '@/store/songStore'
 import { useUiStore } from '@/store/uiStore'
@@ -36,6 +38,7 @@ export function SetlistBuilderPage() {
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState(false)
+  const [stageViewOpen, setStageViewOpen] = useState(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -76,8 +79,10 @@ export function SetlistBuilderPage() {
 
   const sortedSongs = [...setlist.songs].sort((a, b) => a.order - b.order)
   const songIds = sortedSongs.map((ss) => ss.songId)
+  const resolvedSongs = sortedSongs.map((ss) => songMap[ss.songId]).filter(Boolean) as Song[]
 
   return (
+    <>
     <PageTransition>
       {/* Header */}
       <div className="builder-header">
@@ -86,6 +91,13 @@ export function SetlistBuilderPage() {
           Setlists
         </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            className="share-icon-btn"
+            onClick={() => setStageViewOpen(true)}
+            aria-label="Stage view"
+          >
+            <Monitor size={18} />
+          </button>
           <button
             className="share-icon-btn"
             onClick={() => navigate(`/setlists/${setlistId}/share`)}
@@ -168,5 +180,15 @@ export function SetlistBuilderPage() {
 
       <div style={{ height: 40 }} />
     </PageTransition>
+
+    <AnimatePresence>
+      {stageViewOpen && (
+        <StageViewOverlay
+          songs={resolvedSongs}
+          onExit={() => setStageViewOpen(false)}
+        />
+      )}
+    </AnimatePresence>
+    </>
   )
 }
