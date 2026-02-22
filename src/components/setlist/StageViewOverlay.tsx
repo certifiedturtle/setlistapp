@@ -9,6 +9,17 @@ interface StageViewOverlayProps {
 
 const MAX_FONT_PX = 72
 
+function displayTitle(title: string, fontSize: number): string {
+  const containerWidth = window.innerWidth - 64
+  const estimatedWidth = title.length * fontSize * 0.6
+  if (estimatedWidth <= containerWidth) return title
+  return title
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => word[0].toUpperCase())
+    .join('.')
+}
+
 export function StageViewOverlay({ songs, onExit }: StageViewOverlayProps) {
   const [showX, setShowX] = useState(false)
   const lastTapRef = useRef<number>(0)
@@ -57,9 +68,11 @@ export function StageViewOverlay({ songs, onExit }: StageViewOverlayProps) {
             fontWeight: 700,
             color: '#000',
             lineHeight: 1.2,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
           }}
         >
-          {song.title}
+          {displayTitle(song.title, fontSize)}
         </div>
       ))}
 
