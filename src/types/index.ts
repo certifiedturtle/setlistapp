@@ -18,6 +18,7 @@ export interface Song {
   energy: EnergyLevel
   lyrics?: string
   toneNotes?: string
+  stageName?: string
   tags: string[]
   year?: number
 }

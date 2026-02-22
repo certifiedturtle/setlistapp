@@ -57,6 +57,7 @@ export function EditSongPage() {
   const [tags, setTags] = useState<string[]>(song?.tags ?? [])
   const [tagInput, setTagInput] = useState('')
   const [toneNotes, setToneNotes] = useState(song?.toneNotes ?? '')
+  const [stageName, setStageName] = useState(song?.stageName ?? '')
   const [lyrics, setLyrics] = useState(song?.lyrics ?? '')
 
   if (!song) {
@@ -106,6 +107,7 @@ export function EditSongPage() {
       year: year ? parseInt(year, 10) : undefined,
       tags,
       toneNotes: toneNotes.trim() || undefined,
+      stageName: stageName.trim() || undefined,
       lyrics: lyrics.trim() || undefined,
     })
     navigate(-1)
@@ -151,6 +153,19 @@ export function EditSongPage() {
             type="text"
             value={artist}
             onChange={(e) => setArtist(e.target.value)}
+            autoComplete="off"
+            style={inputStyle}
+          />
+        </div>
+
+        {/* Stage Name */}
+        <div>
+          <label style={labelStyle}>Stage Name <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>(optional)</span></label>
+          <input
+            type="text"
+            value={stageName}
+            onChange={(e) => setStageName(e.target.value)}
+            placeholder="Short name shown in Stage View…"
             autoComplete="off"
             style={inputStyle}
           />

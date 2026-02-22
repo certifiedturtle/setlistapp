@@ -72,7 +72,7 @@ export function StageViewOverlay({ songs, onExit }: StageViewOverlayProps) {
             overflow: 'hidden',
           }}
         >
-          {displayTitle(song.title, fontSize)}
+          {song.stageName ? song.stageName : displayTitle(song.title, fontSize)}
         </div>
       ))}
 
