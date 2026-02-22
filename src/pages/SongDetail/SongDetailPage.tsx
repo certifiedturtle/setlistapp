@@ -38,7 +38,7 @@ export function SongDetailPage() {
           <ChevronLeft size={18} />
           Library
         </button>
-        <button className="edit-btn" aria-label="Edit song">
+        <button className="edit-btn" aria-label="Edit song" onClick={() => navigate(`/library/song/${songId}/edit`)}>
           Edit
         </button>
       </div>
@@ -101,7 +101,7 @@ export function SongDetailPage() {
         style={{ position: 'sticky', bottom: 0, background: 'var(--bg)' }}
       >
         <button className="btn-secondary">Add to Set</button>
-        <button className="btn-primary">Edit Song</button>
+        <button className="btn-primary" onClick={() => navigate(`/library/song/${songId}/edit`)}>Edit Song</button>
       </div>
     </PageTransition>
   )

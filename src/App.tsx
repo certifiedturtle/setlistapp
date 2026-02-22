@@ -4,6 +4,7 @@ import { AppShell } from '@/components/layout/AppShell'
 import { LibraryPage } from '@/pages/Library/LibraryPage'
 import { SongDetailPage } from '@/pages/SongDetail/SongDetailPage'
 import { AddSongPage } from '@/pages/Library/AddSongPage'
+import { EditSongPage } from '@/pages/Library/EditSongPage'
 import { SetlistsPage } from '@/pages/Setlists/SetlistsPage'
 import { CreateSetlistPage } from '@/pages/Setlists/CreateSetlistPage'
 import { SetlistBuilderPage } from '@/pages/Setlists/SetlistBuilderPage'
@@ -22,6 +23,7 @@ export function App() {
           <Route path="/library" element={<LibraryPage />} />
           <Route path="/library/add" element={<AddSongPage />} />
           <Route path="/library/song/:songId" element={<SongDetailPage />} />
+          <Route path="/library/song/:songId/edit" element={<EditSongPage />} />
           <Route path="/setlists" element={<SetlistsPage />} />
           <Route path="/setlists/new" element={<CreateSetlistPage />} />
           <Route path="/setlists/:setlistId" element={<SetlistBuilderPage />} />
