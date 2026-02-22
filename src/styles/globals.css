@@ -116,6 +116,7 @@ img, svg {
   display: flex;
   flex-direction: column;
   box-shadow: 0 0 60px rgba(0,0,0,0.8);
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 /* ===== PAGE CONTAINER ===== */
