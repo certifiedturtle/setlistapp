@@ -790,6 +790,23 @@ img, svg {
   border-radius: var(--r-md);
 }
 
+.share-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  padding: 6px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  transition: color 0.15s;
+}
+
+.share-icon-btn:active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 .setlist-name-input {
   font-family: var(--font-heading);
   font-size: 22px;

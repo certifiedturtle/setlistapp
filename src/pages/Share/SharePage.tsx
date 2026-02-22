@@ -1,26 +1,11 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Share2, Copy, Mail } from 'lucide-react'
 import { PageTransition } from '@/components/layout/PageTransition'
 import { useSetlistStore } from '@/store/setlistStore'
 import { useSongStore } from '@/store/songStore'
 import { getTotalDurationDisplay, formatSetlistDate } from '@/utils/setlistUtils'
 import { Song } from '@/types'
-import clsx from 'clsx'
-
-const EXPORT_OPTIONS = [
-  { id: 'order', label: 'Song order', defaultOn: true },
-  { id: 'keys', label: 'Keys', defaultOn: true },
-  { id: 'lyrics', label: 'Lyrics', defaultOn: false },
-  { id: 'tone', label: 'Tone notes', defaultOn: false },
-]
-
-const SHARE_TILES = [
-  { id: 'link', icon: '🔗', label: 'Copy Link', featured: false },
-  { id: 'pdf', icon: '📄', label: 'Export PDF', featured: false },
-  { id: 'messages', icon: '💬', label: 'Messages', featured: false },
-  { id: 'band', icon: '👥', label: 'Band Members', featured: true },
-]
 
 export function SharePage() {
   const { setlistId } = useParams<{ setlistId: string }>()
@@ -30,9 +15,7 @@ export function SharePage() {
   const allSongs = useSongStore((s) => s.songs)
   const songMap = Object.fromEntries(allSongs.map((s) => [s.id, s])) as Record<string, Song>
 
-  const [toggles, setToggles] = useState<Record<string, boolean>>(
-    Object.fromEntries(EXPORT_OPTIONS.map((o) => [o.id, o.defaultOn]))
-  )
+  const [copied, setCopied] = useState(false)
 
   if (!setlist) {
     return (
@@ -45,9 +28,33 @@ export function SharePage() {
   }
 
   const totalDuration = getTotalDurationDisplay(setlist, songMap)
+  const sortedSongs = [...setlist.songs].sort((a, b) => a.order - b.order)
 
-  const toggle = (id: string) => {
-    setToggles((prev) => ({ ...prev, [id]: !prev[id] }))
+  const buildShareText = () => {
+    const lines = sortedSongs.map((ss, i) => `${i + 1}. ${songMap[ss.songId]?.title ?? 'Unknown'}`)
+    return `${setlist.name}\n\n${lines.join('\n')}`
+  }
+
+  const handleShare = async () => {
+    if (!navigator.share) {
+      alert('Native sharing is only available on mobile browsers.')
+      return
+    }
+    const text = buildShareText()
+    await navigator.share({ title: setlist.name, text })
+  }
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(buildShareText())
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleEmail = () => {
+    const text = buildShareText()
+    const subject = encodeURIComponent(setlist.name)
+    const body = encodeURIComponent(text)
+    window.location.href = `mailto:?subject=${subject}&body=${body}`
   }
 
   return (
@@ -83,43 +90,24 @@ export function SharePage() {
       </div>
 
       {/* Section label */}
-      <div style={{ padding: '0 16px 10px' }}>
-        <div className="section-label">Include in export</div>
-      </div>
-
-      {/* Toggle list */}
-      <div className="toggle-list">
-        {EXPORT_OPTIONS.map((opt) => (
-          <div key={opt.id} className="toggle-item">
-            <span className="toggle-label">{opt.label}</span>
-            <button
-              className={clsx('toggle-switch', { on: toggles[opt.id] })}
-              onClick={() => toggle(opt.id)}
-              role="switch"
-              aria-checked={toggles[opt.id]}
-              aria-label={opt.label}
-            />
-          </div>
-        ))}
-      </div>
-
-      {/* Section label */}
       <div style={{ padding: '16px 16px 10px' }}>
         <div className="section-label">Share via</div>
       </div>
 
       {/* Share grid */}
       <div className="share-grid">
-        {SHARE_TILES.map((tile) => (
-          <button
-            key={tile.id}
-            className={clsx('share-tile', { featured: tile.featured })}
-            aria-label={tile.label}
-          >
-            <span className="share-tile-icon">{tile.icon}</span>
-            <span className="share-tile-label">{tile.label}</span>
-          </button>
-        ))}
+        <button className="share-tile" onClick={handleShare} aria-label="Share setlist">
+          <span className="share-tile-icon"><Share2 size={24} /></span>
+          <span className="share-tile-label">Share</span>
+        </button>
+        <button className="share-tile" onClick={handleCopy} aria-label="Copy to clipboard">
+          <span className="share-tile-icon"><Copy size={24} /></span>
+          <span className="share-tile-label">{copied ? 'Copied!' : 'Copy'}</span>
+        </button>
+        <button className="share-tile" onClick={handleEmail} aria-label="Send via email">
+          <span className="share-tile-icon"><Mail size={24} /></span>
+          <span className="share-tile-label">Email</span>
+        </button>
       </div>
     </PageTransition>
   )

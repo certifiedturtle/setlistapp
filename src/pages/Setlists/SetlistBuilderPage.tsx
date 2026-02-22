@@ -12,7 +12,7 @@ import {
   useSensors,
 } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { ChevronLeft, Plus } from 'lucide-react'
+import { ChevronLeft, Plus, Share2 } from 'lucide-react'
 import { PageTransition } from '@/components/layout/PageTransition'
 import { DraggableSongRow } from '@/components/setlist/DraggableSongRow'
 import { useSetlistStore } from '@/store/setlistStore'
@@ -85,9 +85,18 @@ export function SetlistBuilderPage() {
           <ChevronLeft size={18} />
           Setlists
         </button>
-        <button className="save-btn" aria-label="Save setlist">
-          Save
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            className="share-icon-btn"
+            onClick={() => navigate(`/setlists/${setlistId}/share`)}
+            aria-label="Share setlist"
+          >
+            <Share2 size={18} />
+          </button>
+          <button className="save-btn" aria-label="Save setlist">
+            Save
+          </button>
+        </div>
       </div>
 
       {/* Editable name */}
