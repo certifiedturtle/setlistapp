@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__figma__generate_figma_design",
+      "Bash(curl:*)",
+      "Bash(open:*)",
+      "Bash(npm run dev:*)"
+    ]
+  }
+}
