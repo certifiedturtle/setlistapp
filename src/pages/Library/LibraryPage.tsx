@@ -4,6 +4,7 @@ import { Search, Plus, ArrowUpDown } from 'lucide-react'
 import { PageTransition } from '@/components/layout/PageTransition'
 import { SongRow } from '@/components/song/SongRow'
 import { useSongStore, useFilteredSongs } from '@/store/songStore'
+import { useSettingsStore } from '@/store/settingsStore'
 import clsx from 'clsx'
 
 const FILTER_OPTIONS = [
@@ -18,6 +19,9 @@ const FILTER_OPTIONS = [
 export function LibraryPage() {
   const navigate = useNavigate()
   const [showSearch, setShowSearch] = useState(false)
+  const bandName = useSettingsStore((s) => s.bandName)
+  const title = `${bandName} Library`
+  const fontSize = title.length <= 20 ? 26 : title.length <= 26 ? 22 : title.length <= 32 ? 18 : 15
   const searchQuery = useSongStore((s) => s.searchQuery)
   const activeFilter = useSongStore((s) => s.activeFilter)
   const setSearchQuery = useSongStore((s) => s.setSearchQuery)
@@ -36,7 +40,7 @@ export function LibraryPage() {
     <PageTransition>
       {/* Header */}
       <div className="screen-header">
-        <h1 className="screen-title">Library</h1>
+        <h1 className="screen-title" style={{ fontSize }}>{title}</h1>
         <div className="header-actions">
           <button
             className="icon-btn"
