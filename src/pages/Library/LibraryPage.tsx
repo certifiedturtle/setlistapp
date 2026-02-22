@@ -40,7 +40,20 @@ export function LibraryPage() {
     <PageTransition>
       {/* Header */}
       <div className="screen-header">
-        <h1 className="screen-title" style={{ fontSize }}>{title}</h1>
+        <h1
+          className="screen-title"
+          style={{
+            fontSize,
+            flex: 1,
+            minWidth: 0,
+            display: '-webkit-box',
+            WebkitBoxOrient: 'vertical',
+            WebkitLineClamp: 2,
+            overflow: 'hidden',
+          }}
+        >
+          {title}
+        </h1>
         <div className="header-actions">
           <button
             className="icon-btn"
