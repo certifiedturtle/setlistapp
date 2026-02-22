@@ -93,7 +93,7 @@ export function SetlistBuilderPage() {
           >
             <Share2 size={18} />
           </button>
-          <button className="save-btn" aria-label="Save setlist">
+          <button className="save-btn" aria-label="Save setlist" onClick={() => navigate('/setlists')}>
             Save
           </button>
         </div>
