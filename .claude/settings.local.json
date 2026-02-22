@@ -4,7 +4,10 @@
       "mcp__figma__generate_figma_design",
       "Bash(curl:*)",
       "Bash(open:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(git pull:*)",
+      "Bash(cd \"/Users/michael.tempestini/Documents/claude code /setlist app testing/setlist-studio\" && npm run build 2>&1)",
+      "Bash(cd:*)"
     ]
   }
 }
