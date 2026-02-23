@@ -120,16 +120,21 @@ export const useSongStore = create<SongState>()((set, get) => ({
     if (!user) return
     // Optimistic
     set((s) => ({ songs: [...s.songs, song] }))
-    const { error } = await supabase.from('songs').insert(songToRow(song, user.id))
-    if (error) {
-      console.error('Failed to add song:', error)
+    try {
+      const { error } = await supabase.from('songs').insert(songToRow(song, user.id))
+      if (error) throw error
+    } catch (err) {
+      console.error('Failed to add song:', err)
       // Rollback
       set((s) => ({ songs: s.songs.filter((x) => x.id !== song.id) }))
     }
   },
 
   updateSong: async (id: string, updates: Partial<Song>) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
     // Optimistic
+    const previous = get().songs.find((s) => s.id === id)
     set((s) => ({
       songs: s.songs.map((song) => (song.id === id ? { ...song, ...updates } : song)),
     }))
@@ -147,15 +152,30 @@ export const useSongStore = create<SongState>()((set, get) => ({
     if (updates.stageName !== undefined) dbUpdates.stage_name = updates.stageName
     if (updates.tags !== undefined) dbUpdates.tags = updates.tags
     if (updates.year !== undefined) dbUpdates.year = updates.year
-    const { error } = await supabase.from('songs').update(dbUpdates).eq('id', id)
-    if (error) console.error('Failed to update song:', error)
+    try {
+      const { error } = await supabase.from('songs').update(dbUpdates).eq('id', id).eq('user_id', user.id)
+      if (error) throw error
+    } catch (err) {
+      console.error('Failed to update song:', err)
+      // Rollback
+      if (previous) set((s) => ({ songs: s.songs.map((song) => (song.id === id ? previous : song)) }))
+    }
   },
 
   deleteSong: async (id: string) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
     // Optimistic
+    const previous = get().songs.find((s) => s.id === id)
     set((s) => ({ songs: s.songs.filter((song) => song.id !== id) }))
-    const { error } = await supabase.from('songs').delete().eq('id', id)
-    if (error) console.error('Failed to delete song:', error)
+    try {
+      const { error } = await supabase.from('songs').delete().eq('id', id).eq('user_id', user.id)
+      if (error) throw error
+    } catch (err) {
+      console.error('Failed to delete song:', err)
+      // Rollback
+      if (previous) set((s) => ({ songs: [...s.songs, previous] }))
+    }
   },
 
   setSearchQuery: (q) => set({ searchQuery: q }),
