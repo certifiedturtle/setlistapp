@@ -14,6 +14,7 @@ import { GigsPage } from '@/pages/Gigs/GigsPage'
 import { SettingsPage } from '@/pages/Settings/SettingsPage'
 import { LoginPage } from '@/pages/Login/LoginPage'
 import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
 
 function AuthCallback() {
   const { user } = useAuth()
@@ -21,17 +22,44 @@ function AuthCallback() {
   const navigatedRef = useRef(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Diagnostic logging on mount
+  // Explicit PKCE exchange — detectSessionInUrl is false so this is the only
+  // place the exchange happens, making it deterministic and debuggable.
   useEffect(() => {
     console.log('[AuthCallback] mounted, href:', window.location.href)
     const params = new URLSearchParams(window.location.search)
-    console.log('[AuthCallback] code present:', params.has('code'))
-    console.log('[AuthCallback] error param:', params.get('error'))
+    const code = params.get('code')
+    const errorParam = params.get('error')
     const verifierKeys = Object.keys(localStorage).filter(k => k.includes('code_verifier'))
+    console.log('[AuthCallback] code present:', !!code)
+    console.log('[AuthCallback] error param:', errorParam)
     console.log('[AuthCallback] code_verifier keys in localStorage:', verifierKeys)
+
+    if (errorParam) {
+      console.error('[AuthCallback] OAuth error param:', errorParam)
+      setError(`OAuth error: ${errorParam}`)
+      return
+    }
+
+    if (!code) {
+      console.error('[AuthCallback] No code in URL')
+      setError('No authorization code found in callback URL.')
+      return
+    }
+
+    supabase.auth.exchangeCodeForSession(code).then(({ data, error: exchErr }) => {
+      console.log('[AuthCallback] exchangeCodeForSession result:', {
+        hasSession: !!data?.session,
+        userId: data?.session?.user?.id,
+        error: exchErr?.message,
+      })
+      if (exchErr) {
+        setError(`Authentication failed: ${exchErr.message}`)
+      }
+      // On success, SIGNED_IN fires → AuthContext sets user → navigation effect runs
+    })
   }, [])
 
-  // Navigate when AuthContext surfaces a user (after PKCE exchange completes)
+  // Navigate when AuthContext surfaces a user (after exchange fires SIGNED_IN)
   useEffect(() => {
     if (user && !navigatedRef.current) {
       navigatedRef.current = true

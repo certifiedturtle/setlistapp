@@ -14,5 +14,9 @@ if (!url || !key) {
 export const supabase = createClient(url, key, {
   auth: {
     flowType: 'pkce',
+    // Disable automatic URL-based exchange so AuthCallback owns the one explicit
+    // exchangeCodeForSession call. Without this, initialize() races the exchange
+    // before onAuthStateChange subscribers are registered, failing silently.
+    detectSessionInUrl: false,
   },
 })
