@@ -20,40 +20,38 @@ function AuthCallback() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const navigatedRef = useRef(false)
-  const checkedRef = useRef(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Actively check for session after Supabase initialization completes.
-  // getSession() awaits initializePromise, which includes the auto code exchange.
+  // Direct subscription to auth state changes with diagnostic logging.
+  // Avoids getSession() which can deadlock with the auth lock during initialization.
   useEffect(() => {
-    if (checkedRef.current) return
-    checkedRef.current = true
-
-    // Diagnostic logging
+    console.log('[AuthCallback] mounted')
     console.log('[AuthCallback] href:', window.location.href)
     console.log('[AuthCallback] search:', window.location.search)
     console.log('[AuthCallback] hash:', window.location.hash)
+    const params = new URLSearchParams(window.location.search)
+    console.log('[AuthCallback] has code:', params.has('code'))
+    console.log('[AuthCallback] has error:', params.get('error'))
     const verifierKeys = Object.keys(localStorage).filter(k => k.includes('code_verifier'))
     console.log('[AuthCallback] code_verifier keys:', verifierKeys)
 
-    supabase.auth.getSession().then(({ data: { session }, error: sessionError }) => {
-      console.log('[AuthCallback] getSession result:', {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[AuthCallback] onAuthStateChange:', event, {
         hasSession: !!session,
         userId: session?.user?.id,
-        error: sessionError?.message,
       })
 
       if (session?.user && !navigatedRef.current) {
         navigatedRef.current = true
         navigate('/library', { replace: true })
-      } else if (sessionError) {
-        setError(`Auth error: ${sessionError.message}`)
-      } else {
-        // No session — exchange may have failed silently.
-        // Try manual exchange as last resort.
-        const code = new URLSearchParams(window.location.search).get('code')
+      }
+
+      // INITIAL_SESSION with no user means the auto-exchange didn't produce a session
+      if (event === 'INITIAL_SESSION' && !session?.user) {
+        console.warn('[AuthCallback] INITIAL_SESSION with no user — exchange may have failed')
+        const code = params.get('code')
         if (code) {
-          console.log('[AuthCallback] No session from auto-exchange, trying manual...')
+          console.log('[AuthCallback] Attempting manual exchangeCodeForSession...')
           supabase.auth.exchangeCodeForSession(code).then(({ data, error: exchErr }) => {
             if (exchErr) {
               console.error('[AuthCallback] Manual exchange failed:', exchErr.message)
@@ -64,10 +62,12 @@ function AuthCallback() {
             }
           })
         } else {
-          setError('No authorization code in URL and no session established.')
+          setError('No authorization code found in callback URL.')
         }
       }
     })
+
+    return () => subscription.unsubscribe()
   }, [navigate])
 
   // Backup: navigate if user appears via onAuthStateChange
