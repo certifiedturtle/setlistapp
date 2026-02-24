@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
+import { App as CapApp } from '@capacitor/app'
+import { Capacitor } from '@capacitor/core'
 import { AppShell } from '@/components/layout/AppShell'
 import { LibraryPage } from '@/pages/Library/LibraryPage'
 import { SongDetailPage } from '@/pages/SongDetail/SongDetailPage'
@@ -141,6 +143,34 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 export function App() {
   const location = useLocation()
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return
+
+    const listenerPromise = CapApp.addListener('appUrlOpen', async ({ url }) => {
+      console.log('[appUrlOpen] received:', url)
+      const urlObj = new URL(url)
+      const code = urlObj.searchParams.get('code')
+      const errorParam = urlObj.searchParams.get('error')
+
+      if (errorParam) {
+        console.error('[appUrlOpen] OAuth error:', errorParam)
+        return
+      }
+      if (!code) {
+        console.error('[appUrlOpen] No code in deep-link URL')
+        return
+      }
+
+      const { error } = await supabase.auth.exchangeCodeForSession(code)
+      if (error) {
+        console.error('[appUrlOpen] exchangeCodeForSession error:', error.message)
+      }
+      // onAuthStateChange in AuthContext will fire SIGNED_IN → navigation to /library
+    })
+
+    return () => { listenerPromise.then(l => l.remove()) }
+  }, [])
 
   return (
     <Routes location={location} key={location.pathname}>
