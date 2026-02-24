@@ -1,10 +1,15 @@
 import { useState } from 'react'
+import { Navigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import './LoginPage.css'
 
 export function LoginPage() {
-  const { signInWithGoogle } = useAuth()
+  const { signInWithGoogle, user } = useAuth()
   const [loading, setLoading] = useState(false)
+
+  if (user) {
+    return <Navigate to="/library" replace />
+  }
 
   const handleGoogleSignIn = async () => {
     setLoading(true)
