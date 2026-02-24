@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { useLocation, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { AppShell } from '@/components/layout/AppShell'
@@ -16,28 +16,29 @@ import { LoginPage } from '@/pages/Login/LoginPage'
 import { useAuth } from '@/contexts/AuthContext'
 
 function AuthCallback() {
-  const { user, loading } = useAuth()
+  const { user } = useAuth()
   const navigate = useNavigate()
+  const navigatedRef = useRef(false)
 
-  // Capture OAuth params at mount time before Supabase clears them from the URL.
-  // INITIAL_SESSION fires with null while the code exchange is still in flight,
-  // so we must not redirect to /login until we know no exchange is pending.
-  const [hasOAuthParams] = useState(() => {
-    const search = new URLSearchParams(window.location.search)
-    return search.has('code') || window.location.hash.includes('access_token')
-  })
-
+  // Navigate to /library as soon as the PKCE exchange completes and SIGNED_IN fires
   useEffect(() => {
-    if (loading) return
-    if (user) {
+    if (user && !navigatedRef.current) {
+      navigatedRef.current = true
       navigate('/library', { replace: true })
-    } else if (!hasOAuthParams) {
-      // No OAuth exchange in progress — genuinely unauthenticated
-      navigate('/login', { replace: true })
     }
-    // If hasOAuthParams && !user: code exchange is still in flight;
-    // wait for SIGNED_IN to fire and set user, which re-runs this effect.
-  }, [user, loading, navigate, hasOAuthParams])
+  }, [user, navigate])
+
+  // Safety fallback: if auth hasn't resolved in 10s (e.g. exchange failed),
+  // send the user back to login rather than leaving them on a blank spinner.
+  useEffect(() => {
+    const id = setTimeout(() => {
+      if (!navigatedRef.current) {
+        navigatedRef.current = true
+        navigate('/login', { replace: true })
+      }
+    }, 10000)
+    return () => clearTimeout(id)
+  }, [navigate])
 
   return (
     <div style={{
