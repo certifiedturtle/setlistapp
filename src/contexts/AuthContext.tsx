@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { Session, User } from '@supabase/supabase-js'
+import { Capacitor } from '@capacitor/core'
 import { supabase } from '@/lib/supabase'
 import { useSongStore } from '@/store/songStore'
 import { useSetlistStore } from '@/store/setlistStore'
@@ -58,7 +59,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signInWithGoogle = async () => {
-    const redirectTo = `${window.location.origin}/auth/callback`
+    const redirectTo = Capacitor.isNativePlatform()
+      ? 'com.certifiedturtle.setlistbuddy://auth/callback'
+      : `${window.location.origin}/auth/callback`
     console.log('[Auth] signInWithGoogle redirectTo:', redirectTo)
     await supabase.auth.signInWithOAuth({
       provider: 'google',

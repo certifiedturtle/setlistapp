@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@capacitor/app": "^8.0.1",
     "@capacitor/core": "^8.1.0",
     "@capacitor/ios": "^8.1.0",
     "@dnd-kit/core": "^6.3.1",
