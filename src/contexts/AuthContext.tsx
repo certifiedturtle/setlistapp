@@ -21,23 +21,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // onAuthStateChange is the single source of truth for auth state — it does
+    // not go through Supabase's internal session lock, so it never deadlocks.
+    // We deliberately avoid calling getSession() here: on refresh, Supabase
+    // runs a token refresh that holds the internal lock; any concurrent
+    // getSession() call queues behind that lock, and the DB query inside
+    // initialize() also needs the lock for auth headers — causing a deadlock
+    // where neither ever resolves.
+    // Callback must be synchronous (no async) so Supabase does not await it
+    // while holding the internal auth lock. The auth lock serializes token
+    // refresh; DB queries inside initialize() call getSession() which also
+    // acquires the same lock — deadlocking if called from within the callback.
+    // setTimeout(0) defers store initialization until after the lock releases.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
-    })
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      setLoading(false)
-
-      if (event === 'SIGNED_IN' && session?.user) {
-        await useSongStore.getState().initialize(session.user.id)
-        await useSetlistStore.getState().initialize(session.user.id)
-        await useSettingsStore.getState().initialize(session.user.id)
+      if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
+        const userId = session.user.id
+        setTimeout(() => {
+          useSongStore.getState().initialize(userId)
+          useSetlistStore.getState().initialize(userId)
+          useSettingsStore.getState().initialize(userId)
+        }, 0)
       }
 
       if (event === 'SIGNED_OUT') {
