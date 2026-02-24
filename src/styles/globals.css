@@ -1262,6 +1262,11 @@ img, svg {
   z-index: 10;
 }
 
+/* ===== SPINNER ===== */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ===== UTILS ===== */
 .scroll-content {
   padding-bottom: 90px; /* space above FAB */
