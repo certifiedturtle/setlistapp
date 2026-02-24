@@ -12,6 +12,7 @@ interface SongState {
   songs: Song[]
   loading: boolean
   initialized: boolean
+  userId: string | null
   searchQuery: string
   activeFilter: string // 'all' | 'covers' | 'originals' | genre name
   filters: SongFilters
@@ -68,6 +69,7 @@ export const useSongStore = create<SongState>()((set, get) => ({
   songs: [],
   loading: false,
   initialized: false,
+  userId: null,
   searchQuery: '',
   activeFilter: 'all',
   filters: { genre: null, type: null, energy: null },
@@ -100,7 +102,7 @@ export const useSongStore = create<SongState>()((set, get) => ({
             const { error: insertError } = await supabase.from('songs').insert(rows)
             if (!insertError) {
               localStorage.removeItem('setlist-studio-songs')
-              set({ songs: localSongs, loading: false, initialized: true })
+              set({ songs: localSongs, loading: false, initialized: true, userId })
               return
             }
           }
@@ -110,18 +112,18 @@ export const useSongStore = create<SongState>()((set, get) => ({
       }
     }
 
-    set({ songs: data.map(rowToSong), loading: false, initialized: true })
+    set({ songs: data.map(rowToSong), loading: false, initialized: true, userId })
   },
 
-  reset: () => set({ songs: [], loading: false, initialized: false, searchQuery: '', activeFilter: 'all' }),
+  reset: () => set({ songs: [], loading: false, initialized: false, userId: null, searchQuery: '', activeFilter: 'all' }),
 
   addSong: async (song: Song) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    // Optimistic
-    set((s) => ({ songs: [...s.songs, song] }))
     try {
-      const { error } = await supabase.from('songs').insert(songToRow(song, user.id))
+      const userId = get().userId
+      if (!userId) return
+      // Optimistic
+      set((s) => ({ songs: [...s.songs, song] }))
+      const { error } = await supabase.from('songs').insert(songToRow(song, userId))
       if (error) throw error
     } catch (err) {
       console.error('Failed to add song:', err)
@@ -131,8 +133,8 @@ export const useSongStore = create<SongState>()((set, get) => ({
   },
 
   updateSong: async (id: string, updates: Partial<Song>) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const userId = get().userId
+    if (!userId) return
     // Optimistic
     const previous = get().songs.find((s) => s.id === id)
     set((s) => ({
@@ -153,7 +155,7 @@ export const useSongStore = create<SongState>()((set, get) => ({
     if (updates.tags !== undefined) dbUpdates.tags = updates.tags
     if (updates.year !== undefined) dbUpdates.year = updates.year
     try {
-      const { error } = await supabase.from('songs').update(dbUpdates).eq('id', id).eq('user_id', user.id)
+      const { error } = await supabase.from('songs').update(dbUpdates).eq('id', id).eq('user_id', userId)
       if (error) throw error
     } catch (err) {
       console.error('Failed to update song:', err)
@@ -163,13 +165,13 @@ export const useSongStore = create<SongState>()((set, get) => ({
   },
 
   deleteSong: async (id: string) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const userId = get().userId
+    if (!userId) return
     // Optimistic
     const previous = get().songs.find((s) => s.id === id)
     set((s) => ({ songs: s.songs.filter((song) => song.id !== id) }))
     try {
-      const { error } = await supabase.from('songs').delete().eq('id', id).eq('user_id', user.id)
+      const { error } = await supabase.from('songs').delete().eq('id', id).eq('user_id', userId)
       if (error) throw error
     } catch (err) {
       console.error('Failed to delete song:', err)
