@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react'
 import { PageTransition } from '@/components/layout/PageTransition'
 import { useSettingsStore } from '@/store/settingsStore'
+import { useAuth } from '@/contexts/AuthContext'
+import { BottomSheet } from '@/components/modals/BottomSheet'
 
 const STATIC_SETTINGS = [
   { label: 'Default Target Duration', value: '60 min' },
@@ -10,8 +12,10 @@ const STATIC_SETTINGS = [
 
 export function SettingsPage() {
   const { bandName, setBandName } = useSettingsStore()
+  const { signOut } = useAuth()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   function startEditing() {
@@ -135,7 +139,54 @@ export function SettingsPage() {
             </div>
           ))}
         </div>
+
+        <div style={{ margin: '24px 16px 8px' }}>
+          <div className="section-label">Account</div>
+        </div>
+        <div
+          style={{
+            margin: '0 16px',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--r-lg)',
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            onClick={() => setShowLogoutConfirm(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              padding: '14px 16px',
+              cursor: 'pointer',
+            }}
+          >
+            <span style={{ fontSize: 14, color: 'var(--accent-2)' }}>Log Out</span>
+          </div>
+        </div>
       </div>
+
+      <BottomSheet isOpen={showLogoutConfirm} onClose={() => setShowLogoutConfirm(false)}>
+        <div className="sheet-header">
+          <button className="sheet-cancel" onClick={() => setShowLogoutConfirm(false)}>No</button>
+          <span className="sheet-title">Log Out?</span>
+          <button
+            className="sheet-confirm"
+            style={{ color: 'var(--accent-2)' }}
+            onClick={async () => {
+              setShowLogoutConfirm(false)
+              await signOut()
+            }}
+          >
+            Yes
+          </button>
+        </div>
+        <div className="sheet-content" style={{ padding: '16px', textAlign: 'center' }}>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0 }}>
+            Are you sure you want to log out?
+          </p>
+        </div>
+      </BottomSheet>
     </PageTransition>
   )
 }
