@@ -14,7 +14,6 @@ import { GigsPage } from '@/pages/Gigs/GigsPage'
 import { SettingsPage } from '@/pages/Settings/SettingsPage'
 import { LoginPage } from '@/pages/Login/LoginPage'
 import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/lib/supabase'
 
 function AuthCallback() {
   const { user } = useAuth()
@@ -22,55 +21,17 @@ function AuthCallback() {
   const navigatedRef = useRef(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Direct subscription to auth state changes with diagnostic logging.
-  // Avoids getSession() which can deadlock with the auth lock during initialization.
+  // Diagnostic logging on mount
   useEffect(() => {
-    console.log('[AuthCallback] mounted')
-    console.log('[AuthCallback] href:', window.location.href)
-    console.log('[AuthCallback] search:', window.location.search)
-    console.log('[AuthCallback] hash:', window.location.hash)
+    console.log('[AuthCallback] mounted, href:', window.location.href)
     const params = new URLSearchParams(window.location.search)
-    console.log('[AuthCallback] has code:', params.has('code'))
-    console.log('[AuthCallback] has error:', params.get('error'))
+    console.log('[AuthCallback] code present:', params.has('code'))
+    console.log('[AuthCallback] error param:', params.get('error'))
     const verifierKeys = Object.keys(localStorage).filter(k => k.includes('code_verifier'))
-    console.log('[AuthCallback] code_verifier keys:', verifierKeys)
+    console.log('[AuthCallback] code_verifier keys in localStorage:', verifierKeys)
+  }, [])
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('[AuthCallback] onAuthStateChange:', event, {
-        hasSession: !!session,
-        userId: session?.user?.id,
-      })
-
-      if (session?.user && !navigatedRef.current) {
-        navigatedRef.current = true
-        navigate('/library', { replace: true })
-      }
-
-      // INITIAL_SESSION with no user means the auto-exchange didn't produce a session
-      if (event === 'INITIAL_SESSION' && !session?.user) {
-        console.warn('[AuthCallback] INITIAL_SESSION with no user — exchange may have failed')
-        const code = params.get('code')
-        if (code) {
-          console.log('[AuthCallback] Attempting manual exchangeCodeForSession...')
-          supabase.auth.exchangeCodeForSession(code).then(({ data, error: exchErr }) => {
-            if (exchErr) {
-              console.error('[AuthCallback] Manual exchange failed:', exchErr.message)
-              setError(`Exchange failed: ${exchErr.message}`)
-            } else if (data.session && !navigatedRef.current) {
-              navigatedRef.current = true
-              navigate('/library', { replace: true })
-            }
-          })
-        } else {
-          setError('No authorization code found in callback URL.')
-        }
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [navigate])
-
-  // Backup: navigate if user appears via onAuthStateChange
+  // Navigate when AuthContext surfaces a user (after PKCE exchange completes)
   useEffect(() => {
     if (user && !navigatedRef.current) {
       navigatedRef.current = true
@@ -78,11 +39,11 @@ function AuthCallback() {
     }
   }, [user, navigate])
 
-  // Safety fallback: if auth hasn't resolved in 10s, show timeout message then redirect.
+  // 10s safety timeout
   useEffect(() => {
     const id = setTimeout(() => {
       if (!navigatedRef.current) {
-        console.warn('[AuthCallback] 10s timeout — redirecting to /login')
+        console.warn('[AuthCallback] 10s timeout — no user surfaced')
         setError('Authentication timed out. Redirecting to login...')
         setTimeout(() => {
           if (!navigatedRef.current) {
