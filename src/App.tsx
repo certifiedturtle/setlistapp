@@ -14,61 +14,17 @@ import { GigsPage } from '@/pages/Gigs/GigsPage'
 import { SettingsPage } from '@/pages/Settings/SettingsPage'
 import { LoginPage } from '@/pages/Login/LoginPage'
 import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/lib/supabase'
 
 function AuthCallback() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const navigatedRef = useRef(false)
-  const exchangedRef = useRef(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Explicitly trigger the PKCE exchange on mount.
-  // detectSessionInUrl is false so Supabase will NOT do this automatically.
-  useEffect(() => {
-    if (exchangedRef.current) return
-    exchangedRef.current = true
-
-    const params = new URLSearchParams(window.location.search)
-    const code = params.get('code')
-
-    // Diagnostic: log PKCE code_verifier presence before exchange
-    const storageKeys = Object.keys(localStorage)
-    const verifierKeys = storageKeys.filter(k => k.includes('code_verifier'))
-    console.log('[AuthCallback] origin:', window.location.origin)
-    console.log('[AuthCallback] code param present:', !!code)
-    console.log('[AuthCallback] PKCE code_verifier keys in localStorage:', verifierKeys)
-
-    if (!code) {
-      console.warn('[AuthCallback] No code param — redirecting to /login')
-      navigatedRef.current = true
-      navigate('/login', { replace: true })
-      return
-    }
-
-    supabase.auth.exchangeCodeForSession(code).then(({ error: exchangeError }) => {
-      if (exchangeError) {
-        console.error('[AuthCallback] exchangeCodeForSession failed:', exchangeError.message)
-        setError(exchangeError.message)
-        // Give user time to see the error before redirecting
-        setTimeout(() => {
-          if (!navigatedRef.current) {
-            navigatedRef.current = true
-            navigate('/login', { replace: true })
-          }
-        }, 5000)
-      } else {
-        console.log('[AuthCallback] Code exchange succeeded, waiting for session...')
-      }
-      // On success: onAuthStateChange fires SIGNED_IN → setUser() →
-      // the effect below detects user and navigates to /library.
-    })
-  }, [navigate])
-
-  // Navigate to /library as soon as SIGNED_IN fires and user is set.
+  // Supabase automatically detects the ?code= param and exchanges it (detectSessionInUrl: true).
+  // Once onAuthStateChange fires SIGNED_IN and user is set, navigate to /library.
   useEffect(() => {
     if (user && !navigatedRef.current) {
-      console.log('[AuthCallback] User set — navigating to /library')
       navigatedRef.current = true
       navigate('/library', { replace: true })
     }
