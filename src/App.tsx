@@ -14,15 +14,63 @@ import { GigsPage } from '@/pages/Gigs/GigsPage'
 import { SettingsPage } from '@/pages/Settings/SettingsPage'
 import { LoginPage } from '@/pages/Login/LoginPage'
 import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
 
 function AuthCallback() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const navigatedRef = useRef(false)
+  const checkedRef = useRef(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Supabase automatically detects the ?code= param and exchanges it (detectSessionInUrl: true).
-  // Once onAuthStateChange fires SIGNED_IN and user is set, navigate to /library.
+  // Actively check for session after Supabase initialization completes.
+  // getSession() awaits initializePromise, which includes the auto code exchange.
+  useEffect(() => {
+    if (checkedRef.current) return
+    checkedRef.current = true
+
+    // Diagnostic logging
+    console.log('[AuthCallback] href:', window.location.href)
+    console.log('[AuthCallback] search:', window.location.search)
+    console.log('[AuthCallback] hash:', window.location.hash)
+    const verifierKeys = Object.keys(localStorage).filter(k => k.includes('code_verifier'))
+    console.log('[AuthCallback] code_verifier keys:', verifierKeys)
+
+    supabase.auth.getSession().then(({ data: { session }, error: sessionError }) => {
+      console.log('[AuthCallback] getSession result:', {
+        hasSession: !!session,
+        userId: session?.user?.id,
+        error: sessionError?.message,
+      })
+
+      if (session?.user && !navigatedRef.current) {
+        navigatedRef.current = true
+        navigate('/library', { replace: true })
+      } else if (sessionError) {
+        setError(`Auth error: ${sessionError.message}`)
+      } else {
+        // No session — exchange may have failed silently.
+        // Try manual exchange as last resort.
+        const code = new URLSearchParams(window.location.search).get('code')
+        if (code) {
+          console.log('[AuthCallback] No session from auto-exchange, trying manual...')
+          supabase.auth.exchangeCodeForSession(code).then(({ data, error: exchErr }) => {
+            if (exchErr) {
+              console.error('[AuthCallback] Manual exchange failed:', exchErr.message)
+              setError(`Exchange failed: ${exchErr.message}`)
+            } else if (data.session && !navigatedRef.current) {
+              navigatedRef.current = true
+              navigate('/library', { replace: true })
+            }
+          })
+        } else {
+          setError('No authorization code in URL and no session established.')
+        }
+      }
+    })
+  }, [navigate])
+
+  // Backup: navigate if user appears via onAuthStateChange
   useEffect(() => {
     if (user && !navigatedRef.current) {
       navigatedRef.current = true
