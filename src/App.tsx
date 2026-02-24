@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { AppShell } from '@/components/layout/AppShell'
@@ -19,15 +19,25 @@ function AuthCallback() {
   const { user, loading } = useAuth()
   const navigate = useNavigate()
 
+  // Capture OAuth params at mount time before Supabase clears them from the URL.
+  // INITIAL_SESSION fires with null while the code exchange is still in flight,
+  // so we must not redirect to /login until we know no exchange is pending.
+  const [hasOAuthParams] = useState(() => {
+    const search = new URLSearchParams(window.location.search)
+    return search.has('code') || window.location.hash.includes('access_token')
+  })
+
   useEffect(() => {
-    if (!loading) {
-      if (user) {
-        navigate('/library', { replace: true })
-      } else {
-        navigate('/login', { replace: true })
-      }
+    if (loading) return
+    if (user) {
+      navigate('/library', { replace: true })
+    } else if (!hasOAuthParams) {
+      // No OAuth exchange in progress — genuinely unauthenticated
+      navigate('/login', { replace: true })
     }
-  }, [user, loading, navigate])
+    // If hasOAuthParams && !user: code exchange is still in flight;
+    // wait for SIGNED_IN to fire and set user, which re-runs this effect.
+  }, [user, loading, navigate, hasOAuthParams])
 
   return (
     <div style={{
