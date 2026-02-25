@@ -13,6 +13,7 @@ import { CreateSetlistPage } from '@/pages/Setlists/CreateSetlistPage'
 import { SetlistBuilderPage } from '@/pages/Setlists/SetlistBuilderPage'
 import { SharePage } from '@/pages/Share/SharePage'
 import { GigsPage } from '@/pages/Gigs/GigsPage'
+import { GigDetailPage } from '@/pages/Gigs/GigDetailPage'
 import { SettingsPage } from '@/pages/Settings/SettingsPage'
 import { LoginPage } from '@/pages/Login/LoginPage'
 import { JoinBandModal } from '@/components/modals/JoinBandModal'
@@ -221,6 +222,7 @@ export function App() {
                 <Route path="/setlists/:setlistId" element={<SetlistBuilderPage />} />
                 <Route path="/setlists/:setlistId/share" element={<SharePage />} />
                 <Route path="/gigs" element={<GigsPage />} />
+                <Route path="/gigs/:gigId" element={<GigDetailPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
               </Routes>
             </AnimatePresence>

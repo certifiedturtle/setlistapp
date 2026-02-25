@@ -40,11 +40,25 @@ export interface Setlist {
 
 export interface Gig {
   id: string
+  bandId: string
+  createdBy: string
   name: string
-  date: string
-  venue: string
-  setlistId?: string
+  date?: string       // ISO date string e.g. "2026-08-14"
+  venue?: string
   notes?: string
+  setlistId?: string
+  createdAt: string
+  loadInTime?:     string   // "HH:MM" 24-hr
+  soundCheckTime?: string
+  doorsTime?:      string
+  setStartTime?:   string
+  setEndTime?:     string
+  loadOutTime?:    string
+  location?:       string
+  contactName?:    string
+  contactPhone?:   string
+  ticketLink?:     string
+  equipment?:      { items: string[]; otherText?: string }
 }
 
 export type NavDirection = 'forward' | 'back' | 'tab'

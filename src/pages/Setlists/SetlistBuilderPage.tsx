@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import {
   DndContext,
   DragEndEvent,
@@ -26,6 +26,10 @@ import { Song } from '@/types'
 export function SetlistBuilderPage() {
   const { setlistId } = useParams<{ setlistId: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
+  const backLabel = (location.state as { from?: string } | null)?.from === 'gig'
+    ? 'Gig Details'
+    : 'Setlists'
   const openSongPicker = useUiStore((s) => s.openSongPicker)
 
   const setlist = useSetlistStore((s) => s.setlists.find((sl) => sl.id === setlistId))
@@ -88,7 +92,7 @@ export function SetlistBuilderPage() {
       <div className="builder-header">
         <button className="back-btn" onClick={() => navigate(-1)} aria-label="Go back">
           <ChevronLeft size={18} />
-          Setlists
+          {backLabel}
         </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
