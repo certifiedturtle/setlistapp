@@ -9,6 +9,8 @@ interface BandState {
   loading: boolean
 
   initializeBand: (userId: string) => Promise<string | null>
+  createBand: (name: string) => Promise<string | null>
+  updateBandName: (name: string) => Promise<void>
   generateInvite: () => Promise<BandInvite | null>
   acceptInvite: (token: string) => Promise<AcceptInviteResult>
   resetBand: () => void
@@ -53,62 +55,53 @@ export const useBandStore = create<BandState>()((set, get) => ({
     return bandId
   },
 
+  createBand: async (name: string) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return null
+    set({ loading: true })
+
+    const { data: newBand, error: bandError } = await supabase
+      .from('bands')
+      .insert({ name: name.trim(), owner_id: user.id })
+      .select()
+      .single()
+    if (bandError || !newBand) {
+      console.error('Failed to create band:', bandError)
+      set({ loading: false }); return null
+    }
+
+    const { error: memberError } = await supabase
+      .from('band_members')
+      .insert({ band_id: newBand.id, user_id: user.id, role: 'owner' })
+    if (memberError) {
+      console.error('Failed to add owner to band_members:', memberError)
+      set({ loading: false }); return null
+    }
+
+    // Migrate existing solo content into the band
+    await supabase.from('songs').update({ band_id: newBand.id })
+      .eq('user_id', user.id).is('band_id', null)
+    await supabase.from('setlists').update({ band_id: newBand.id })
+      .eq('user_id', user.id).is('band_id', null)
+
+    const bandId = await get().initializeBand(user.id)
+    return bandId
+  },
+
+  updateBandName: async (name: string) => {
+    const { band } = get()
+    if (!band) return
+    set((s) => ({ band: s.band ? { ...s.band, name } : null }))  // optimistic
+    const { error } = await supabase.from('bands').update({ name }).eq('id', band.id)
+    if (error) { set({ band }); console.error('Failed to update band name:', error) }
+  },
+
   generateInvite: async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return null
 
-    let { band } = get()
-
-    if (!band) {
-      // Lazily create the band using the user's band_name from profiles
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('band_name')
-        .eq('id', user.id)
-        .single()
-
-      const bandName = profile?.band_name ?? 'My Band'
-
-      const { data: newBand, error: bandError } = await supabase
-        .from('bands')
-        .insert({ name: bandName, owner_id: user.id })
-        .select()
-        .single()
-
-      if (bandError || !newBand) {
-        console.error('Failed to create band:', bandError)
-        return null
-      }
-
-      band = newBand as Band
-
-      // Insert owner into band_members
-      const { error: memberError } = await supabase
-        .from('band_members')
-        .insert({ band_id: band.id, user_id: user.id, role: 'owner' })
-
-      if (memberError) {
-        console.error('Failed to add owner to band_members:', memberError)
-        return null
-      }
-
-      // Migrate owner's existing songs/setlists into the band
-      await supabase
-        .from('songs')
-        .update({ band_id: band.id })
-        .eq('user_id', user.id)
-        .is('band_id', null)
-
-      await supabase
-        .from('setlists')
-        .update({ band_id: band.id })
-        .eq('user_id', user.id)
-        .is('band_id', null)
-
-      // Reload full band state
-      await get().initializeBand(user.id)
-      band = get().band!
-    }
+    const { band } = get()
+    if (!band) return null
 
     const { data: invite, error: inviteError } = await supabase
       .from('band_invites')

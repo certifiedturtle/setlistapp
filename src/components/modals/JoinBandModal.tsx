@@ -64,7 +64,6 @@ export function JoinBandModal({ isOpen, token, onClose }: JoinBandModalProps) {
         <span className="sheet-title">Join Band</span>
         <button
           className="sheet-confirm"
-          style={{ color: 'var(--accent)' }}
           onClick={handleJoin}
           disabled={loading || !token}
         >
