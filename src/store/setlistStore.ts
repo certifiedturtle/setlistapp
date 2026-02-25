@@ -6,8 +6,10 @@ import { supabase } from '@/lib/supabase'
 interface SetlistState {
   setlists: Setlist[]
   initialized: boolean
+  currentBandId: string | null
+  currentUserId: string | null
 
-  initialize: (userId: string) => Promise<void>
+  initialize: (userId: string, bandId?: string | null) => Promise<void>
   reset: () => void
   addSetlist: (setlist: Setlist) => Promise<void>
   updateSetlist: (id: string, updates: Partial<Setlist>) => Promise<void>
@@ -55,15 +57,20 @@ async function persistSongsOrder(setlistId: string, songs: SetlistSong[]) {
 export const useSetlistStore = create<SetlistState>()((set, get) => ({
   setlists: [],
   initialized: false,
+  currentBandId: null,
+  currentUserId: null,
 
-  initialize: async (userId: string) => {
+  initialize: async (userId: string, bandId?: string | null) => {
     if (get().initialized) return
+    set({ currentBandId: bandId ?? null, currentUserId: userId })
 
-    const { data, error } = await supabase
-      .from('setlists')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: true })
+    let query = supabase.from('setlists').select('*')
+    if (bandId) {
+      query = query.eq('band_id', bandId)
+    } else {
+      query = query.eq('user_id', userId).is('band_id', null)
+    }
+    const { data, error } = await query.order('created_at', { ascending: true })
 
     if (error) {
       console.error('Failed to fetch setlists:', error)
@@ -95,13 +102,15 @@ export const useSetlistStore = create<SetlistState>()((set, get) => ({
     set({ setlists: data.map(rowToSetlist), initialized: true })
   },
 
-  reset: () => set({ setlists: [], initialized: false }),
+  reset: () => set({ setlists: [], initialized: false, currentBandId: null, currentUserId: null }),
 
   addSetlist: async (setlist: Setlist) => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+    const { currentBandId } = get()
     set((s) => ({ setlists: [...s.setlists, setlist] }))
-    const { error } = await supabase.from('setlists').insert(setlistToRow(setlist, user.id))
+    const record = { ...setlistToRow(setlist, user.id), band_id: currentBandId ?? null }
+    const { error } = await supabase.from('setlists').insert(record)
     if (error) {
       console.error('Failed to add setlist:', error)
       set((s) => ({ setlists: s.setlists.filter((x) => x.id !== setlist.id) }))

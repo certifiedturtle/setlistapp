@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react'
+import { Capacitor } from '@capacitor/core'
 import { PageTransition } from '@/components/layout/PageTransition'
 import { useSettingsStore } from '@/store/settingsStore'
 import { useAuth } from '@/contexts/AuthContext'
+import { useBandStore } from '@/store/bandStore'
 import { BottomSheet } from '@/components/modals/BottomSheet'
 
 const STATIC_SETTINGS = [
@@ -12,11 +14,28 @@ const STATIC_SETTINGS = [
 
 export function SettingsPage() {
   const { bandName, setBandName } = useSettingsStore()
-  const { signOut } = useAuth()
+  const { signOut, user } = useAuth()
+  const { band, generateInvite } = useBandStore()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Owner = no band yet (solo user about to create one) OR band owner
+  const isOwner = !band || band.owner_id === user?.id
+
+  async function handleGenerateInvite() {
+    const invite = await generateInvite()
+    if (!invite) return
+    const link = `com.certifiedturtle.setlistbuddy://invite?token=${invite.id}`
+    const text = `Join my band on Setlist Studio!\n\n${link}`
+    if (Capacitor.isNativePlatform()) {
+      const { Share } = await import('@capacitor/share')
+      await Share.share({ title: 'Join my band on Setlist Studio', text, dialogTitle: 'Invite Band Member' })
+    } else {
+      await navigator.clipboard.writeText(text)
+    }
+  }
 
   function startEditing() {
     setDraft(bandName)
@@ -152,6 +171,22 @@ export function SettingsPage() {
             overflow: 'hidden',
           }}
         >
+          {isOwner && (
+            <div
+              onClick={handleGenerateInvite}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '14px 16px',
+                borderBottom: '1px solid var(--border)',
+                cursor: 'pointer',
+              }}
+            >
+              <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>Invite Band Member</span>
+              <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>›</span>
+            </div>
+          )}
           <div
             onClick={() => setShowLogoutConfirm(true)}
             style={{
