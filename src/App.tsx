@@ -13,9 +13,12 @@ import { CreateSetlistPage } from '@/pages/Setlists/CreateSetlistPage'
 import { SetlistBuilderPage } from '@/pages/Setlists/SetlistBuilderPage'
 import { SharePage } from '@/pages/Share/SharePage'
 import { GigsPage } from '@/pages/Gigs/GigsPage'
+import { GigDetailPage } from '@/pages/Gigs/GigDetailPage'
 import { SettingsPage } from '@/pages/Settings/SettingsPage'
 import { LoginPage } from '@/pages/Login/LoginPage'
+import { JoinBandModal } from '@/components/modals/JoinBandModal'
 import { useAuth } from '@/contexts/AuthContext'
+import { useUiStore } from '@/store/uiStore'
 import { supabase } from '@/lib/supabase'
 
 function AuthCallback() {
@@ -143,6 +146,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 export function App() {
   const location = useLocation()
+  const navigate = useNavigate()
+  const { pendingInviteToken, isJoinBandModalOpen } = useUiStore()
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return
@@ -150,6 +155,23 @@ export function App() {
     const listenerPromise = CapApp.addListener('appUrlOpen', async ({ url }) => {
       console.log('[appUrlOpen] received:', url)
       const urlObj = new URL(url)
+
+      // Handle invite deep links
+      if (urlObj.host === 'invite') {
+        const token = urlObj.searchParams.get('token')
+        if (token) {
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+            useUiStore.getState().setPendingInviteToken(token)
+            useUiStore.getState().setJoinBandModalOpen(true)
+          } else {
+            sessionStorage.setItem('pendingInviteToken', token)
+            navigate('/login')
+          }
+          return
+        }
+      }
+
       const code = urlObj.searchParams.get('code')
       const errorParam = urlObj.searchParams.get('error')
 
@@ -170,9 +192,18 @@ export function App() {
     })
 
     return () => { listenerPromise.then(l => l.remove()) }
-  }, [])
+  }, [navigate])
 
   return (
+    <>
+    <JoinBandModal
+      isOpen={isJoinBandModalOpen}
+      token={pendingInviteToken}
+      onClose={() => {
+        useUiStore.getState().setPendingInviteToken(null)
+        useUiStore.getState().setJoinBandModalOpen(false)
+      }}
+    />
     <Routes location={location} key={location.pathname}>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
@@ -191,6 +222,7 @@ export function App() {
                 <Route path="/setlists/:setlistId" element={<SetlistBuilderPage />} />
                 <Route path="/setlists/:setlistId/share" element={<SharePage />} />
                 <Route path="/gigs" element={<GigsPage />} />
+                <Route path="/gigs/:gigId" element={<GigDetailPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
               </Routes>
             </AnimatePresence>
@@ -198,5 +230,6 @@ export function App() {
         </ProtectedRoute>
       } />
     </Routes>
+    </>
   )
 }

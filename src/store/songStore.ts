@@ -13,11 +13,13 @@ interface SongState {
   loading: boolean
   initialized: boolean
   userId: string | null
+  currentBandId: string | null
+  currentUserId: string | null
   searchQuery: string
   activeFilter: string // 'all' | 'covers' | 'originals' | genre name
   filters: SongFilters
 
-  initialize: (userId: string) => Promise<void>
+  initialize: (userId: string, bandId?: string | null) => Promise<void>
   reset: () => void
   addSong: (song: Song) => Promise<void>
   updateSong: (id: string, updates: Partial<Song>) => Promise<void>
@@ -70,19 +72,23 @@ export const useSongStore = create<SongState>()((set, get) => ({
   loading: false,
   initialized: false,
   userId: null,
+  currentBandId: null,
+  currentUserId: null,
   searchQuery: '',
   activeFilter: 'all',
   filters: { genre: null, type: null, energy: null },
 
-  initialize: async (userId: string) => {
+  initialize: async (userId: string, bandId?: string | null) => {
     if (get().initialized) return
-    set({ loading: true })
+    set({ loading: true, currentBandId: bandId ?? null, currentUserId: userId })
 
-    const { data, error } = await supabase
-      .from('songs')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: true })
+    let query = supabase.from('songs').select('*')
+    if (bandId) {
+      query = query.eq('band_id', bandId)
+    } else {
+      query = query.eq('user_id', userId).is('band_id', null)
+    }
+    const { data, error } = await query.order('created_at', { ascending: true })
 
     if (error) {
       console.error('Failed to fetch songs:', error)
@@ -115,15 +121,17 @@ export const useSongStore = create<SongState>()((set, get) => ({
     set({ songs: data.map(rowToSong), loading: false, initialized: true, userId })
   },
 
-  reset: () => set({ songs: [], loading: false, initialized: false, userId: null, searchQuery: '', activeFilter: 'all' }),
+  reset: () => set({ songs: [], loading: false, initialized: false, userId: null, currentBandId: null, currentUserId: null, searchQuery: '', activeFilter: 'all' }),
 
   addSong: async (song: Song) => {
     try {
-      const userId = get().userId
+      const { currentUserId, currentBandId } = get()
+      const userId = currentUserId ?? get().userId
       if (!userId) return
       // Optimistic
       set((s) => ({ songs: [...s.songs, song] }))
-      const { error } = await supabase.from('songs').insert(songToRow(song, userId))
+      const record = { ...songToRow(song, userId), band_id: currentBandId ?? null }
+      const { error } = await supabase.from('songs').insert(record)
       if (error) throw error
     } catch (err) {
       console.error('Failed to add song:', err)

@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight, Search, Check, ArrowRight } from 'lucide-react'
 import { PageTransition } from '@/components/layout/PageTransition'
 import { useSongStore } from '@/store/songStore'
 import { useSetlistStore } from '@/store/setlistStore'
+import { useGigStore } from '@/store/gigStore'
 import { secsToDisplay } from '@/utils/formatDuration'
 import { Setlist, EnergyLevel } from '@/types'
 import clsx from 'clsx'
@@ -68,6 +69,8 @@ const labelStyle: React.CSSProperties = {
 
 export function CreateSetlistPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const returnToGig = searchParams.get('returnToGig')
   const addSetlist = useSetlistStore((s) => s.addSetlist)
   const allSongs = useSongStore((s) => s.songs)
 
@@ -123,7 +126,7 @@ export function CreateSetlistPage() {
     return acc + (song?.durationSecs ?? 0)
   }, 0)
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     const id = crypto.randomUUID()
     const targetDuration =
       startTime && endTime ? computeTargetDuration(startTime, endTime) : 3600
@@ -137,8 +140,15 @@ export function CreateSetlistPage() {
       targetDuration,
     }
 
-    addSetlist(newSetlist)
-    navigate(`/setlists/${id}`, { replace: true })
+    await addSetlist(newSetlist)
+
+    if (returnToGig) {
+      const updateGig = useGigStore.getState().updateGig
+      await updateGig(returnToGig, { setlistId: newSetlist.id })
+      navigate(`/gigs/${returnToGig}`, { replace: true })
+    } else {
+      navigate(`/setlists/${id}`, { replace: true })
+    }
   }
 
   return (

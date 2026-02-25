@@ -1286,3 +1286,24 @@ img, svg {
   clip: rect(0,0,0,0);
   white-space: nowrap;
 }
+
+/* ===== CENTERED MODAL ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.modal-dialog {
+  background: var(--surface-2);
+  border-radius: var(--r-lg);
+  width: 100%;
+  max-width: 360px;
+  z-index: 201;
+  overflow: hidden;
+}

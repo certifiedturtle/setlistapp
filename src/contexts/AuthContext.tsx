@@ -5,6 +5,8 @@ import { supabase } from '@/lib/supabase'
 import { useSongStore } from '@/store/songStore'
 import { useSetlistStore } from '@/store/setlistStore'
 import { useSettingsStore } from '@/store/settingsStore'
+import { useBandStore } from '@/store/bandStore'
+import { useUiStore } from '@/store/uiStore'
 
 interface AuthContextValue {
   user: User | null
@@ -41,14 +43,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
         const userId = session.user.id
-        setTimeout(() => {
-          useSongStore.getState().initialize(userId)
-          useSetlistStore.getState().initialize(userId)
-          useSettingsStore.getState().initialize(userId)
+        setTimeout(async () => {
+          await useSettingsStore.getState().initialize(userId)
+          const bandId = await useBandStore.getState().initializeBand(userId)
+          await useSongStore.getState().initialize(userId, bandId)
+          await useSetlistStore.getState().initialize(userId, bandId)
+
+          const pendingToken = sessionStorage.getItem('pendingInviteToken')
+          if (pendingToken) {
+            sessionStorage.removeItem('pendingInviteToken')
+            useUiStore.getState().setPendingInviteToken(pendingToken)
+            useUiStore.getState().setJoinBandModalOpen(true)
+          }
         }, 0)
       }
 
       if (event === 'SIGNED_OUT') {
+        useBandStore.getState().resetBand()
         useSongStore.getState().reset()
         useSetlistStore.getState().reset()
         useSettingsStore.getState().reset()
